@@ -717,8 +717,72 @@ function setupTriggersServer() {
   return setupCloudTriggers();
 }
 
+function setupRichMenu() {
+  const token = getLineToken();
+  if (!token) throw new Error("未設定 LINE_CHANNEL_ACCESS_TOKEN，請先儲存金鑰！");
+
+  // 1. 建立 Rich Menu 定義 (三宮格)
+  const payload = {
+    size: { width: 2500, height: 843 },
+    selected: true,
+    name: "語音日曆同步秘書三宮格選單",
+    chatBarText: "📅 開啟日曆待辦選單",
+    areas: [
+      { bounds: { x: 0, y: 0, width: 833, height: 843 }, action: { type: "message", text: "今日行程" } },
+      { bounds: { x: 833, y: 0, width: 834, height: 843 }, action: { type: "postback", label: "雙向同步", data: "action=sync_google", displayText: "立即雙向同步 Google Calendar & Tasks" } },
+      { bounds: { x: 1667, y: 0, width: 833, height: 843 }, action: { type: "message", text: "查看待辦清單" } }
+    ]
+  };
+
+  const createRes = UrlFetchApp.fetch("https://api.line.me/v2/bot/richmenu", {
+    method: "post",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  const resJson = JSON.parse(createRes.getContentText());
+  if (!resJson.richMenuId) {
+    throw new Error("建立選單失敗：" + createRes.getContentText());
+  }
+  const richMenuId = resJson.richMenuId;
+
+  // 2. 下載 GitHub 上的 2500x843 圖片並上傳至 LINE
+  const imgUrl = "https://raw.githubusercontent.com/jacobtsaiatwork/voice-calendar-sync-bot/main/rich_menu.png";
+  const imgBlob = UrlFetchApp.fetch(imgUrl).getBlob();
+
+  const uploadRes = UrlFetchApp.fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
+    method: "post",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "image/png" },
+    payload: imgBlob.getBytes(),
+    muteHttpExceptions: true
+  });
+
+  if (uploadRes.getResponseCode() !== 200) {
+    throw new Error("上傳圖片失敗：" + uploadRes.getContentText());
+  }
+
+  // 3. 設為預設選單
+  UrlFetchApp.fetch(`https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`, {
+    method: "post",
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true
+  });
+
+  return "✅ LINE 三宮格圖文選單已成功建立並綁定為官方預設選單！";
+}
+
 function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : "";
+
+  if (action === "setupRichMenu") {
+    try {
+      const msg = setupRichMenu();
+      return ContentService.createTextOutput(msg);
+    } catch (err) {
+      return ContentService.createTextOutput("設定失敗: " + err);
+    }
+  }
 
   if (action === "setupTriggers") {
     const msg = setupCloudTriggers();
