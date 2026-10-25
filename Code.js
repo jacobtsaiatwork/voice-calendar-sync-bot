@@ -696,6 +696,16 @@ function checkUpcomingReminders() {
 // ==========================================
 // 9. 雲端 Web 管理面板 (doGet)
 // ==========================================
+function saveConfigServer(token, key) {
+  if (token) setProperty("LINE_CHANNEL_ACCESS_TOKEN", token);
+  if (key) setProperty("GEMINI_API_KEY", key);
+  return "✅ 設定已成功儲存至 Google 雲端！";
+}
+
+function setupTriggersServer() {
+  return setupCloudTriggers();
+}
+
 function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : "";
 

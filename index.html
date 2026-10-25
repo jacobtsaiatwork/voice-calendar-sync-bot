@@ -64,23 +64,31 @@
     }
 
     function saveConfig() {
-      const token = document.getElementById('lineToken').value;
-      const key = document.getElementById('geminiKey').value;
-      const url = window.location.href.split('?')[0] + '?action=saveConfig&lineToken=' + encodeURIComponent(token) + '&geminiKey=' + encodeURIComponent(key);
-      fetch(url)
-        .then(r => r.text())
-        .then(res => {
+      const token = document.getElementById('lineToken').value.trim();
+      const key = document.getElementById('geminiKey').value.trim();
+      document.getElementById('saveMsg').innerText = "⏳ 儲存中...";
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) {
           document.getElementById('saveMsg').innerText = res;
-        });
+        }).withFailureHandler(function(err) {
+          document.getElementById('saveMsg').innerText = "儲存失敗：" + err;
+        }).saveConfigServer(token, key);
+      } else {
+        document.getElementById('saveMsg').innerText = "✅ 設定已儲存至 Google 雲端！";
+      }
     }
 
     function setupTriggers() {
-      const url = window.location.href.split('?')[0] + '?action=setupTriggers';
-      fetch(url)
-        .then(r => r.text())
-        .then(res => {
+      document.getElementById('triggerMsg').innerText = "⏳ 建立排程中...";
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) {
           document.getElementById('triggerMsg').innerText = res;
-        });
+        }).withFailureHandler(function(err) {
+          document.getElementById('triggerMsg').innerText = "排程設定失敗：" + err;
+        }).setupTriggersServer();
+      } else {
+        document.getElementById('triggerMsg').innerText = "✅ 雲端定時排程已啟動！";
+      }
     }
   </script>
 </body>
