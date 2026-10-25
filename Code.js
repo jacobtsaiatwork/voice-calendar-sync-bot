@@ -334,25 +334,33 @@ function transcribeAudioWithGemini(messageId) {
     const blob = resp.getBlob();
     const base64Audio = Utilities.base64Encode(blob.getBytes());
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-    const payload = {
-      contents: [{
-        parts: [
-          { text: "請將這段語音轉譯為繁體中文文字。只需輸出轉譯後的字句，不要有任何多餘解釋。" },
-          { inlineData: { mimeType: "audio/mp4", data: base64Audio } }
-        ]
-      }]
-    };
+    const candidateModels = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-flash-latest"];
+    for (const m of candidateModels) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`;
+        const payload = {
+          contents: [{
+            parts: [
+              { text: "請將這段語音轉譯為繁體中文文字。只需輸出轉譯後的字句，不要有任何多餘解釋。" },
+              { inlineData: { mimeType: "audio/mp4", data: base64Audio } }
+            ]
+          }]
+        };
 
-    const res = UrlFetchApp.fetch(geminiUrl, {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    const json = JSON.parse(res.getContentText());
-    if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
-      return json.candidates[0].content.parts[0].text.trim();
+        const res = UrlFetchApp.fetch(geminiUrl, {
+          method: "post",
+          contentType: "application/json",
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true
+        });
+        const json = JSON.parse(res.getContentText());
+        if (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {
+          const txt = json.candidates[0].content.parts[0].text.trim();
+          if (txt) return txt;
+        }
+      } catch (loopErr) {
+        console.warn("Model error " + m + ": " + loopErr);
+      }
     }
   } catch (err) {
     console.error("Gemini Transcribe Error: " + err);
@@ -366,8 +374,7 @@ function parseIntentWithGeminiOrLocal(text) {
   const nowStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy-MM-dd'T'HH:mm:ss");
 
   if (geminiKey) {
-    try {
-      const prompt = `現在時間是 ${nowStr} (Asia/Taipei)。
+    const prompt = `現在時間是 ${nowStr} (Asia/Taipei)。
 請分析使用者的自然語言輸入：「${text}」，並以 JSON 格式輸出：
 {
   "type": "CALENDAR_EVENT" 或 "TASK",
@@ -381,21 +388,25 @@ function parseIntentWithGeminiOrLocal(text) {
 }
 只需輸出合法 JSON，不要有 Markdown code block。`;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-      const res = UrlFetchApp.fetch(geminiUrl, {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        muteHttpExceptions: true
-      });
-      const resJson = JSON.parse(res.getContentText());
-      if (resJson.candidates && resJson.candidates[0]) {
-        let content = resJson.candidates[0].content.parts[0].text.trim();
-        content = content.replace(/^```json/i, "").replace(/```$/i, "").trim();
-        return JSON.parse(content);
+    const candidateModels = ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemini-flash-latest"];
+    for (const m of candidateModels) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`;
+        const res = UrlFetchApp.fetch(geminiUrl, {
+          method: "post",
+          contentType: "application/json",
+          payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          muteHttpExceptions: true
+        });
+        const resJson = JSON.parse(res.getContentText());
+        if (resJson.candidates && resJson.candidates[0]) {
+          let content = resJson.candidates[0].content.parts[0].text.trim();
+          content = content.replace(/^```json/i, "").replace(/```$/i, "").trim();
+          return JSON.parse(content);
+        }
+      } catch (e) {
+        console.warn(`Model ${m} parse failed: ${e}`);
       }
-    } catch (e) {
-      console.warn("Gemini parse failed, fallback to local regex: " + e);
     }
   }
 
