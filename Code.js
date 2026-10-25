@@ -177,7 +177,17 @@ function handleCreateCalendarEvent(item, replyToken) {
     conflictSummary: conflictSummary
   });
 
-  replyFlexMessage(replyToken, `📅 行程已新增：${item.title}`, flex);
+  const messages = [{ type: "flex", altText: `📅 行程已新增：${item.title}`, contents: flex }];
+
+  const isTravel = /日本|東京|大阪|沖繩|機票|出國|飛機|旅遊|班機|出差/i.test(item.title + " " + (item.location || "") + " " + (item.notes || ""));
+  if (isTravel) {
+    messages.push({
+      type: "text",
+      text: "💡【旅遊秘書貼心提醒】\n• ✈️ 查最新機票特價：可至「機票雷達」輸入「清艙」或「Bug價」查看破盤航班\n• 💳 查機票/日韓神卡：推薦刷【富邦 J 卡 (6%)】或【國泰 CUBE 趣旅行 (3%)】賺高額回饋！"
+    });
+  }
+
+  sendLineReply(replyToken, messages);
 }
 
 function autoRescheduleEvent(eventId) {
