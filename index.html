@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>語音日曆同步秘書 - 雲端中控台</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .btn-line { background-color: #00c300; color: white; }
+    .btn-line:hover { background-color: #00a000; color: white; }
+  </style>
+</head>
+<body class="py-5">
+  <div class="container" style="max-width: 680px;">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold text-primary">🎙️ 語音日曆同步秘書</h2>
+      <p class="text-muted">Google Apps Script 雲端全託管版（24H 免開機自動運作）</p>
+    </div>
+
+    <!-- 狀態卡片 -->
+    <div class="card p-4 mb-4">
+      <h5 class="fw-bold mb-3">📡 雲端 Webhook URL (貼至 LINE 後台)</h5>
+      <div class="input-group mb-2">
+        <input type="text" id="webhookUrl" class="form-control" readonly value="" placeholder="載入中...">
+        <button class="btn btn-outline-secondary" onclick="copyWebhook()">複製</button>
+      </div>
+      <small class="text-muted">請將此網址貼入 LINE Developers Console 的 <b>Webhook URL</b> 並開啟 <b>Use webhook</b>。</small>
+    </div>
+
+    <!-- 雲端金鑰設定 -->
+    <div class="card p-4 mb-4">
+      <h5 class="fw-bold mb-3">⚙️ 雲端金鑰設定 (已儲存於 Google 伺服器)</h5>
+      <div class="mb-3">
+        <label class="form-label fw-bold">LINE Channel Access Token</label>
+        <input type="text" id="lineToken" class="form-control" placeholder="貼上您的 LINE Token">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Google Gemini API Key</label>
+        <input type="text" id="geminiKey" class="form-control" placeholder="填入您的 Google Gemini API Key (選填)">
+      </div>
+      <button class="btn btn-primary w-100" onclick="saveConfig()">💾 儲存金鑰至 Google 雲端</button>
+      <div id="saveMsg" class="mt-2 text-center text-success fw-bold"></div>
+    </div>
+
+    <!-- 雲端排程觸發器 -->
+    <div class="card p-4 mb-4">
+      <h5 class="fw-bold mb-3">⏰ 雲端自動推播排程 (免開電腦 24H 守護)</h5>
+      <p class="text-muted small">點擊下方按鈕，Google 伺服器將在每天早上 08:00 自動推播當日行事曆總覽，並每 15 分鐘檢查 30 分鐘內的會議主動發送 LINE 提醒。</p>
+      <button class="btn btn-warning w-100 fw-bold" onclick="setupTriggers()">⏰ 一鍵啟動 Google 雲端定時排程</button>
+      <div id="triggerMsg" class="mt-2 text-center text-primary fw-bold"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('webhookUrl').value = window.location.href.split('?')[0];
+
+    function copyWebhook() {
+      const copyText = document.getElementById("webhookUrl");
+      copyText.select();
+      document.execCommand("copy");
+      alert("✅ 已複製 Webhook 網址！");
+    }
+
+    function saveConfig() {
+      const token = document.getElementById('lineToken').value;
+      const key = document.getElementById('geminiKey').value;
+      const url = window.location.href.split('?')[0] + '?action=saveConfig&lineToken=' + encodeURIComponent(token) + '&geminiKey=' + encodeURIComponent(key);
+      fetch(url)
+        .then(r => r.text())
+        .then(res => {
+          document.getElementById('saveMsg').innerText = res;
+        });
+    }
+
+    function setupTriggers() {
+      const url = window.location.href.split('?')[0] + '?action=setupTriggers';
+      fetch(url)
+        .then(r => r.text())
+        .then(res => {
+          document.getElementById('triggerMsg').innerText = res;
+        });
+    }
+  </script>
+</body>
+</html>
